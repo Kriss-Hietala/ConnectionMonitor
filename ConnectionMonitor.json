@@ -1,0 +1,16 @@
+{
+  "Author": "Kriss-Hietala",
+  "Name": "Connection Monitor",
+  "Punchline": "Manual FFXIV endpoint ping, packet-loss, jitter, and route diagnostics.",
+  "Description": "A local diagnostics plugin for testing a configured network endpoint. Monitoring starts and stops only when the user presses a button. Route tracing is manual and rate-limited.",
+  "InternalName": "ConnectionMonitor",
+  "AssemblyVersion": "1.0.0.0",
+  "RepoUrl": "https://github.com/Kriss-Hietala/ConnectionMonitor",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "network",
+    "ping",
+    "diagnostics",
+    "latency"
+  ]
+}
