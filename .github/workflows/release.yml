@@ -1,0 +1,112 @@
+name: Build and release ConnectionMonitor
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Auto-bump manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          NEW_VERSION="1.0.${{ github.run_number }}.0"
+          echo "Building Connection Monitor version: $NEW_VERSION"
+          python3 - <<PY
+          import json
+          version = "${NEW_VERSION}"
+          for filename in ("ConnectionMonitor.json", "repo.json"):
+              with open(filename, "r", encoding="utf-8") as file:
+                  data = json.load(file)
+              if filename == "ConnectionMonitor.json":
+                  data["AssemblyVersion"] = version
+              else:
+                  for plugin in data:
+                      if plugin.get("InternalName") == "ConnectionMonitor":
+                          plugin["AssemblyVersion"] = version
+              with open(filename, "w", encoding="utf-8") as file:
+                  json.dump(data, file, indent=2)
+                  file.write("\n")
+          PY
+
+      - name: Install Dalamud files required by SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.xlcore/dalamud/Hooks/dev"
+          wget -q "https://goatcorp.github.io/dalamud-distrib/latest.zip" -O /tmp/dalamud.zip
+          unzip -q /tmp/dalamud.zip -d "$HOME/.xlcore/dalamud/Hooks/dev"
+
+      - name: Restore dependencies
+        run: dotnet restore ConnectionMonitor.csproj --source https://api.nuget.org/v3/index.json
+
+      - name: Build Release
+        run: >
+          dotnet build ConnectionMonitor.csproj
+          -c Release
+          --no-restore
+          -p:Version="1.0.${{ github.run_number }}.0"
+          -p:AssemblyVersion="1.0.${{ github.run_number }}.0"
+          -p:FileVersion="1.0.${{ github.run_number }}.0"
+
+      - name: Create Dalamud plugin package
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf artifacts package
+          mkdir -p artifacts package
+          DLL_PATH="$(find bin/Release -type f -name 'ConnectionMonitor.dll' ! -path '*/ref/*' -print -quit)"
+          if [ -z "$DLL_PATH" ]; then
+            echo "::error::Could not find ConnectionMonitor.dll after build."
+            find bin -type f -print || true
+            exit 1
+          fi
+          DLL_DIR="$(dirname "$DLL_PATH")"
+          if [ ! -f "$DLL_DIR/ConnectionMonitor.deps.json" ]; then
+            echo "::error::Could not find ConnectionMonitor.deps.json after build."
+            exit 1
+          fi
+          cp "$DLL_PATH" package/ConnectionMonitor.dll
+          cp "$DLL_DIR/ConnectionMonitor.deps.json" package/ConnectionMonitor.deps.json
+          cp ConnectionMonitor.json package/ConnectionMonitor.json
+          (cd package && zip -r ../artifacts/publish.zip .)
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="v1.0.${{ github.run_number }}.0"
+          gh release create "$TAG" artifacts/publish.zip \
+            --title "Connection Monitor $TAG" \
+            --notes "Automated release $TAG from commit ${{ github.sha }}" \
+            --latest
+
+      - name: Commit bumped manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ConnectionMonitor.json repo.json
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Auto-bump version to 1.0.${{ github.run_number }}.0 [skip ci]"
+            git push origin main
+          fi
