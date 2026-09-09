@@ -5,10 +5,15 @@
     "Punchline": "FFXIV connection diagnostics with ping history and endpoint detection.",
     "Description": "A local FFXIV network diagnostics plugin. It monitors a configured or detected endpoint, stores session history, provides manual route testing, and can experimentally detect the active game endpoint.",
     "InternalName": "ConnectionMonitor",
-    "AssemblyVersion": "1.0.0.0",
+    "AssemblyVersion": "1.0.1.0",
     "RepoUrl": "https://github.com/Kriss-Hietala/ConnectionMonitor",
     "ApplicableVersion": "any",
-    "Tags": ["network", "ping", "diagnostics", "latency"],
+    "Tags": [
+      "network",
+      "ping",
+      "diagnostics",
+      "latency"
+    ],
     "DownloadLinkInstall": "https://github.com/Kriss-Hietala/ConnectionMonitor/releases/latest/download/publish.zip",
     "DownloadLinkUpdate": "https://github.com/Kriss-Hietala/ConnectionMonitor/releases/latest/download/publish.zip",
     "DownloadLinkTesting": "https://github.com/Kriss-Hietala/ConnectionMonitor/releases/latest/download/publish.zip"
